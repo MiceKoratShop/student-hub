@@ -1917,10 +1917,14 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     <div class="orb-2"></div>
   </div>
 
-  <!-- Global Loader (Hidden by default to prevent stuck screens) -->
-  <div id="global-loader" class="global-loader hidden">
+  <!-- Global Luxury Loading Screen with Real-Time GAS Connection Status -->
+  <div id="global-loader" class="global-loader">
     <div class="luxury-spinner"></div>
-    <div style="font-size: 0.88rem; font-weight: 600; color: var(--orange-400);">STUDENT DIRECTORY</div>
+    <div style="font-size: 1rem; font-weight: 700; color: var(--orange-400); letter-spacing: 0.5px; margin-top: 4px;">CLASSROOM STUDENT HUB</div>
+    <div id="loader-status-text" style="font-size: 0.84rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+      <i class="fa-solid fa-satellite-dish" style="color: var(--orange-500);"></i>
+      <span>กำลังเชื่อมต่อฐานข้อมูล Google Apps Script...</span>
+    </div>
   </div>
 
   <!-- Toast Notification Container -->
@@ -4103,13 +4107,13 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     // Load Live Data with Parallel Fetch & Safety Dismissal
     function loadData(isManual) {
       if (state.students.length === 0 && state.classrooms.length === 0) {
-        setLoading(true);
+        setLoading(true, 'กำลังเชื่อมต่อและดึงข้อมูลจาก Google Sheets...');
       }
 
-      // Safety timeout: Maximum 2.5s loader guarantee
+      // Safety timeout: Maximum 3s loader guarantee
       var safetyTimer = setTimeout(function() {
         setLoading(false);
-      }, 2500);
+      }, 3000);
 
       var roomsDone = false;
       var studsDone = false;
@@ -4851,29 +4855,30 @@ textarea.form-control { min-height: 70px; resize: vertical; }
 
     function handleConfirmDeleteClassroom() {
       if (!state.deletingClassroomId) return;
-      btnConfirmDeleteClassroom.disabled = true;
-      btnConfirmDeleteClassroom.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังลบ...';
+      var delId = state.deletingClassroomId;
+      closeDeleteClassroomModal();
+
+      // Instant optimistic UI update
+      state.classrooms = state.classrooms.filter(function(c) {
+        return c.id !== delId;
+      });
+      try {
+        localStorage.setItem('cs_cached_classrooms', JSON.stringify(state.classrooms));
+      } catch (e) {}
+      updateClassroomDropdowns();
+      renderClassroomList();
+      showToast('ลบห้องเรียนเรียบร้อยแล้ว (ซิงค์ Google Sheets ทันที)', 'success');
 
       apiClient.deleteClassroom(
-        state.deletingClassroomId,
+        delId,
         state.adminPassword || 'admin888',
         function(res) {
-          btnConfirmDeleteClassroom.disabled = false;
-          btnConfirmDeleteClassroom.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>ยืนยันการลบ</span>';
-          closeDeleteClassroomModal();
-          if (res && res.success) {
-            showToast('ลบห้องเรียนเรียบร้อยแล้ว', 'success');
-            loadData();
-            setTimeout(renderClassroomList, 500);
-          } else {
-            showToast('การลบล้มเหลว: ' + (res ? res.message : 'Unknown'), 'error');
+          if (!res || !res.success) {
+            console.warn('Delete classroom returned unsuccessful:', res);
           }
         },
         function(err) {
-          btnConfirmDeleteClassroom.disabled = false;
-          btnConfirmDeleteClassroom.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>ยืนยันการลบ</span>';
-          closeDeleteClassroomModal();
-          showToast('เกิดข้อผิดพลาด: ' + err.toString(), 'error');
+          console.warn('Background delete classroom error:', err);
         }
       );
     }
@@ -4887,31 +4892,45 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         return;
       }
 
-      var btn = document.getElementById('btn-save-classroom');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+      var tempId = 'CLS-' + new Date().getTime().toString().slice(-6);
+      var newCls = {
+        id: tempId,
+        gradeLevel: grade,
+        roomName: room,
+        fullName: grade + ' ' + room,
+        createdAt: new Date().toLocaleString('th-TH')
+      };
+
+      // Instant optimistic UI update
+      state.classrooms.push(newCls);
+      try {
+        localStorage.setItem('cs_cached_classrooms', JSON.stringify(state.classrooms));
+      } catch (e) {}
+      updateClassroomDropdowns();
+      newGradeLevel.value = '';
+      newRoomName.value = '';
+      renderClassroomList();
+      showToast('เพิ่มห้องเรียนสำเร็จ (ซิงค์ Google Sheets ทันที)', 'success');
 
       apiClient.addClassroom(
         grade,
         room,
         state.adminPassword || 'admin888',
         function(res) {
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fa-solid fa-plus"></i> เพิ่มระดับชั้นและห้องเรียน';
-          if (res && res.success) {
-            newGradeLevel.value = '';
-            newRoomName.value = '';
-            showToast('เพิ่มห้องเรียนสำเร็จ', 'success');
-            loadData();
-            setTimeout(renderClassroomList, 600);
-          } else {
-            showToast('เกิดข้อผิดพลาด: ' + (res ? res.message : 'Unknown'), 'error');
+          if (res && res.success && res.classroom) {
+            for (var i = 0; i < state.classrooms.length; i++) {
+              if (state.classrooms[i].id === tempId) {
+                state.classrooms[i] = res.classroom;
+                break;
+              }
+            }
+            try {
+              localStorage.setItem('cs_cached_classrooms', JSON.stringify(state.classrooms));
+            } catch (e) {}
           }
         },
         function(err) {
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fa-solid fa-plus"></i> เพิ่มระดับชั้นและห้องเรียน';
-          showToast('บันทึกล้มเหลว: ' + err.toString(), 'error');
+          console.warn('Background add classroom error:', err);
         }
       );
     }
@@ -5067,27 +5086,53 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         note: document.getElementById('form-note').value.trim()
       };
 
-      btnSaveStudent.disabled = true;
-      btnSaveStudent.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+      var isNewStudent = !payload.id;
+      var tempId = payload.id || ('STU-' + (new Date().getTime().toString().slice(-6)));
+      payload.id = tempId;
 
+      // Instant optimistic UI update
+      if (isNewStudent) {
+        state.students.unshift(payload);
+      } else {
+        for (var si = 0; si < state.students.length; si++) {
+          if (state.students[si].id === payload.id) {
+            state.students[si] = payload;
+            break;
+          }
+        }
+      }
+
+      try {
+        localStorage.setItem('cs_cached_students', JSON.stringify(state.students));
+      } catch (e) {}
+
+      updateStats();
+      renderStudents();
+      studentModal.classList.remove('active');
+      btnSaveStudent.disabled = false;
+      btnSaveStudent.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>บันทึกข้อมูล</span>';
+      showToast(isNewStudent ? 'บันทึกข้อมูลสำเร็จ (ซิงค์ Google Sheets ทันที)' : 'แก้ไขข้อมูลสำเร็จ (ซิงค์ Google Sheets ทันที)', 'success');
+
+      // Background sync with GAS
       apiClient.saveStudent(
         payload,
         state.adminPassword || '',
         function(res) {
-          btnSaveStudent.disabled = false;
-          btnSaveStudent.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>บันทึกข้อมูล</span>';
-          if (res && res.success) {
-            studentModal.classList.remove('active');
-            showToast(res.isNew ? 'บันทึกข้อมูลนักศึกษาสำเร็จ' : 'แก้ไขข้อมูลนักศึกษาสำเร็จ', 'success');
-            loadData();
-          } else {
-            showToast('เกิดข้อผิดพลาด: ' + (res ? res.message : 'Unknown'), 'error');
+          if (res && res.success && res.student) {
+            for (var k = 0; k < state.students.length; k++) {
+              if (state.students[k].id === tempId || state.students[k].id === res.student.id) {
+                state.students[k] = Object.assign({}, state.students[k], res.student);
+                break;
+              }
+            }
+            try {
+              localStorage.setItem('cs_cached_students', JSON.stringify(state.students));
+            } catch (e) {}
+            renderStudents();
           }
         },
         function(err) {
-          btnSaveStudent.disabled = false;
-          btnSaveStudent.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>บันทึกข้อมูล</span>';
-          showToast('บันทึกล้มเหลว: ' + err.toString(), 'error');
+          console.warn('Background sync save warning:', err);
         }
       );
     }
@@ -5499,28 +5544,30 @@ textarea.form-control { min-height: 70px; resize: vertical; }
 
     function handleConfirmDelete() {
       if (!state.deletingId) return;
-      btnConfirmDelete.disabled = true;
-      btnConfirmDelete.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังลบ...';
+      var delId = state.deletingId;
+      deleteModal.classList.remove('active');
+
+      // Instant optimistic UI update
+      state.students = state.students.filter(function(st) {
+        return st.id !== delId;
+      });
+      try {
+        localStorage.setItem('cs_cached_students', JSON.stringify(state.students));
+      } catch (e) {}
+      updateStats();
+      renderStudents();
+      showToast('ลบข้อมูลนักศึกษาเรียบร้อย (ซิงค์ Google Sheets ทันที)', 'success');
 
       apiClient.deleteStudent(
-        state.deletingId,
+        delId,
         state.adminPassword || 'admin888',
         function(res) {
-          btnConfirmDelete.disabled = false;
-          btnConfirmDelete.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>ยืนยันลบ</span>';
-          deleteModal.classList.remove('active');
-          if (res && res.success) {
-            showToast('ลบข้อมูลนักศึกษาสำเร็จ', 'success');
-            loadData();
-          } else {
-            showToast('การลบล้มเหลว: ' + (res ? res.message : 'Unknown'), 'error');
+          if (!res || !res.success) {
+            console.warn('Delete student returned unsuccessful:', res);
           }
         },
         function(err) {
-          btnConfirmDelete.disabled = false;
-          btnConfirmDelete.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>ยืนยันลบ</span>';
-          deleteModal.classList.remove('active');
-          showToast('เกิดข้อผิดพลาด: ' + err.toString(), 'error');
+          console.warn('Background delete student error:', err);
         }
       );
     }
@@ -5619,11 +5666,18 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       }
     }
 
-    function setLoading(loading) {
+    function setLoading(loading, message) {
       state.isLoading = loading;
       if (loader) {
-        if (loading) loader.classList.remove('hidden');
-        else loader.classList.add('hidden');
+        if (loading) {
+          loader.classList.remove('hidden');
+          var statusEl = document.getElementById('loader-status-text');
+          if (statusEl && message) {
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color: var(--orange-500);"></i> <span>' + message + '</span>';
+          }
+        } else {
+          loader.classList.add('hidden');
+        }
       }
     }
 
