@@ -1880,7 +1880,33 @@ textarea.form-control { min-height: 70px; resize: vertical; }
   gap: 14px;
 }
 
-.empty-icon { font-size: 48px; opacity: 0.7; }
+.btn-map-layer {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+}
+.btn-map-layer:hover {
+  background: rgba(255, 107, 0, 0.12);
+  color: var(--text-main);
+  border-color: var(--orange-400);
+}
+.btn-map-layer.active {
+  background: var(--orange-gradient);
+  color: #fff;
+  border-color: var(--orange-500);
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(255, 107, 0, 0.4);
+}
 
 .global-loader {
   position: fixed;
@@ -2496,21 +2522,57 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       </div>
 
       <div class="modal-body" style="padding: 16px; gap: 12px; overflow-y: auto;">
-        <!-- Search bar on map -->
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="map-search-query" class="form-control" placeholder="พิมพ์ชื่อสถานที่, อำเภอ, ตำบล เพื่อค้นหา..." style="font-size: 0.85rem; padding: 8px 12px;">
-          <button type="button" id="btn-map-search" class="btn btn-secondary" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
-            <i class="fa-solid fa-magnifying-glass"></i> ค้นหา
-          </button>
+        <!-- Direct Google Maps Link / Coordinate Paste Box -->
+        <div style="background: rgba(66, 133, 244, 0.08); border: 1px dashed rgba(66, 133, 244, 0.4); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+            <span style="font-size: 0.82rem; font-weight: 700; color: #93c5fd; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-brands fa-google" style="color: #60a5fa;"></i> ปักหมุดจาก Google Maps โดยตรง
+            </span>
+            <button type="button" id="btn-open-ext-google-maps" class="btn btn-secondary" style="font-size: 0.72rem; padding: 3px 8px; border-color: rgba(96, 165, 250, 0.4); color: #93c5fd;" title="เปิดหน้าต่าง Google Maps เพื่อหาพิกัด">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> เปิดแอป Google Maps
+            </button>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="input-google-maps-paste" class="form-control" placeholder="วางลิงก์ Google Maps (maps.app.goo.gl) หรือเลขพิกัด 14.9799, 102.0978..." style="font-size: 0.82rem; padding: 7px 10px;">
+            <button type="button" id="btn-parse-google-maps" class="btn btn-primary" style="padding: 0 12px; font-size: 0.78rem; white-space: nowrap; background: #2563eb; border-color: #3b82f6;">
+              <i class="fa-solid fa-crosshairs"></i> ปักหมุด
+            </button>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">
+            💡 ค้นหาบ้านใน Google Maps ➔ กดแชร์คัดลอกลิงก์ หรือแตะค้างดูเลขพิกัดแล้วนำมาวางที่นี่ได้ทันที
+          </div>
         </div>
 
-        <!-- Leaflet Map Container -->
+        <!-- Google Maps Layer Switcher & Search Bar -->
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="map-search-query" class="form-control" placeholder="พิมพ์ชื่อสถานที่, อำเภอ, ตำบล เพื่อค้นหา..." style="font-size: 0.85rem; padding: 8px 12px;">
+            <button type="button" id="btn-map-search" class="btn btn-secondary" style="padding: 0 14px; font-size: 0.82rem; white-space: nowrap;">
+              <i class="fa-solid fa-magnifying-glass"></i> ค้นหา
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 4px; flex-wrap: wrap; align-items: center;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;"><i class="fa-solid fa-layer-group"></i> ชั้นแผนที่:</span>
+            <button type="button" class="btn-map-layer active" data-layer="hybrid" id="btn-layer-hybrid">
+              <i class="fa-solid fa-satellite"></i> 🛰️ Google ดาวเทียม (ภาพจริง HD)
+            </button>
+            <button type="button" class="btn-map-layer" data-layer="streets" id="btn-layer-streets">
+              <i class="fa-solid fa-map"></i> 🗺️ Google แผนที่
+            </button>
+            <button type="button" class="btn-map-layer" data-layer="terrain" id="btn-layer-terrain">
+              <i class="fa-solid fa-mountain-sun"></i> 🏞️ Google ภูมิประเทศ
+            </button>
+          </div>
+        </div>
+
+        <!-- Leaflet Map Container with Google Maps Tile Engine -->
         <div id="leaflet-map-picker"></div>
 
         <!-- Selected Location Display & Direct Navigation Trigger -->
         <div style="background: var(--input-bg); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 6px;">
           <div style="font-size: 0.78rem; color: var(--text-dim); display: flex; align-items: center; justify-content: space-between;">
-            <span><i class="fa-solid fa-hand-pointer" style="color: var(--orange-400);"></i> แตะหรือลากหมุดบนแผนที่เพื่อระบุตำแหน่งที่ตั้ง</span>
+            <span><i class="fa-solid fa-hand-pointer" style="color: var(--orange-400);"></i> แตะหรือลากหมุดบนแผนที่ Google Maps เพื่อระบุตำแหน่ง</span>
             <button type="button" id="btn-picker-get-gps" class="btn btn-secondary" style="font-size: 0.75rem; padding: 3px 8px;">
               <i class="fa-solid fa-location-crosshairs"></i> พิกัดปัจจุบัน
             </button>
@@ -3085,6 +3147,9 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     var mapSearchQuery = document.getElementById('map-search-query');
     var selectedCoordsDisplay = document.getElementById('selected-coords-display');
     var btnPickerGetGps = document.getElementById('btn-picker-get-gps');
+    var inputGoogleMapsPaste = document.getElementById('input-google-maps-paste');
+    var btnParseGoogleMaps = document.getElementById('btn-parse-google-maps');
+    var btnOpenExtGoogleMaps = document.getElementById('btn-open-ext-google-maps');
     var leafletMapInstance = null;
     var leafletMarkerInstance = null;
     var currentPickerCoords = { lat: 14.9799, lng: 102.0978 };
@@ -3348,6 +3413,97 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       );
     }
 
+    // ========================================================================
+    // HIGH-DEFINITION GOOGLE MAPS TILE ENGINE & COORDINATE PARSER
+    // ========================================================================
+    var GOOGLE_MAP_TILES = {
+      hybrid: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+      streets: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+      terrain: 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}'
+    };
+
+    var currentPickerTileLayer = null;
+    var currentPickerLayerType = 'hybrid';
+
+    function switchPickerMapLayer(layerType) {
+      currentPickerLayerType = layerType;
+      var tileUrl = GOOGLE_MAP_TILES[layerType] || GOOGLE_MAP_TILES.hybrid;
+      if (currentPickerTileLayer && leafletMapInstance) {
+        leafletMapInstance.removeLayer(currentPickerTileLayer);
+      }
+      if (leafletMapInstance) {
+        currentPickerTileLayer = L.tileLayer(tileUrl, {
+          maxZoom: 21,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        }).addTo(leafletMapInstance);
+      }
+
+      var btns = document.querySelectorAll('.btn-map-layer');
+      for (var b = 0; b < btns.length; b++) {
+        if (btns[b].getAttribute('data-layer') === layerType) {
+          btns[b].classList.add('active');
+        } else {
+          btns[b].classList.remove('active');
+        }
+      }
+    }
+
+    // SMART GOOGLE MAPS LINK & COORDINATE PARSER
+    function parseGoogleMapsCoordinates(text) {
+      if (!text || typeof text !== 'string') return null;
+      text = text.trim();
+
+      // 1. Direct "lat, lng" (e.g. 14.979900, 102.097800)
+      var plainMatch = text.match(/^(-?\d+\.\d+)[\s,]+(-?\d+\.\d+)$/);
+      if (plainMatch) {
+        var lat = parseFloat(plainMatch[1]);
+        var lng = parseFloat(plainMatch[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat: lat, lng: lng };
+        }
+      }
+
+      // 2. URL containing /@lat,lng (e.g. google.com/maps/@14.9799,102.0978,17z)
+      var atMatch = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (atMatch) {
+        return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+      }
+
+      // 3. URL containing ?q=lat,lng or &q=lat,lng or destination=lat,lng
+      var queryMatch = text.match(/[?&](?:q|destination|ll|query)=(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+      if (queryMatch) {
+        return { lat: parseFloat(queryMatch[1]), lng: parseFloat(queryMatch[2]) };
+      }
+
+      // 4. URL containing !3d(lat)!4d(lng)
+      var embedMatch = text.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+      if (embedMatch) {
+        return { lat: parseFloat(embedMatch[1]), lng: parseFloat(embedMatch[2]) };
+      }
+
+      // 5. Degree DMS (e.g. 14°58'47.6"N 102°05'52.1"E)
+      var dmsMatch = text.match(/(\d+)°(\d+)'([\d.]+)"?([NSns])[\s,]+(\d+)°(\d+)'([\d.]+)"?([EWew])/);
+      if (dmsMatch) {
+        var d1 = parseFloat(dmsMatch[1]) + parseFloat(dmsMatch[2]) / 60 + parseFloat(dmsMatch[3]) / 3600;
+        if (dmsMatch[4].toUpperCase() === 'S') d1 = -d1;
+        var d2 = parseFloat(dmsMatch[5]) + parseFloat(dmsMatch[6]) / 60 + parseFloat(dmsMatch[7]) / 3600;
+        if (dmsMatch[8].toUpperCase() === 'W') d2 = -d2;
+        return { lat: d1, lng: d2 };
+      }
+
+      // 6. Generic two decimal numbers inside string
+      var anyCoordMatch = text.match(/(-?\d{1,2}\.\d{3,8})[\s,]+(-?\d{1,3}\.\d{3,8})/);
+      if (anyCoordMatch) {
+        var latG = parseFloat(anyCoordMatch[1]);
+        var lngG = parseFloat(anyCoordMatch[2]);
+        if (latG >= -90 && latG <= 90 && lngG >= -180 && lngG <= 180) {
+          return { lat: latG, lng: lngG };
+        }
+      }
+
+      return null;
+    }
+
     // Interactive Map Picker Controller
     function openMapPicker(initialCoordStr) {
       var lat = 14.9799;
@@ -3378,11 +3534,13 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       if (!leafletMapInstance) {
         leafletMapInstance = L.map('leaflet-map-picker', {
           zoomControl: true,
-          attributionControl: false
-        }).setView([lat, lng], 15);
+          attributionControl: false,
+          maxZoom: 20
+        }).setView([lat, lng], 17);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19
+        currentPickerTileLayer = L.tileLayer(GOOGLE_MAP_TILES.hybrid, {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(leafletMapInstance);
 
         leafletMarkerInstance = L.marker([lat, lng], { draggable: true }).addTo(leafletMapInstance);
@@ -3398,7 +3556,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         });
       } else {
         leafletMapInstance.invalidateSize();
-        leafletMapInstance.setView([lat, lng], 15);
+        leafletMapInstance.setView([lat, lng], 17);
         if (leafletMarkerInstance) leafletMarkerInstance.setLatLng([lat, lng]);
       }
 
@@ -3441,7 +3599,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
             var lat = parseFloat(first.lat);
             var lng = parseFloat(first.lon);
             if (leafletMapInstance && leafletMarkerInstance) {
-              leafletMapInstance.flyTo([lat, lng], 16);
+              leafletMapInstance.flyTo([lat, lng], 17);
               leafletMarkerInstance.setLatLng([lat, lng]);
               updatePickerCoordDisplay(lat, lng);
             }
@@ -3479,11 +3637,13 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       if (!classroomMapInstance) {
         classroomMapInstance = L.map('classroom-leaflet-map', {
           zoomControl: true,
-          attributionControl: false
+          attributionControl: false,
+          maxZoom: 20
         }).setView([14.9799, 102.0978], 13);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19
+        L.tileLayer(GOOGLE_MAP_TILES.hybrid, {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(classroomMapInstance);
       }
 
@@ -3860,6 +4020,53 @@ textarea.form-control { min-height: 70px; resize: vertical; }
               showToast(err, 'error');
             }
           );
+        });
+      }
+
+      // Direct Google Maps Link / Coordinate Parser
+      if (btnParseGoogleMaps && inputGoogleMapsPaste) {
+        btnParseGoogleMaps.addEventListener('click', function() {
+          var val = inputGoogleMapsPaste.value.trim();
+          if (!val) {
+            showToast('กรุณาวางลิงก์ Google Maps หรือพิกัดก่อน', 'info');
+            return;
+          }
+          var coords = parseGoogleMapsCoordinates(val);
+          if (coords) {
+            if (leafletMapInstance && leafletMarkerInstance) {
+              leafletMapInstance.flyTo([coords.lat, coords.lng], 18);
+              leafletMarkerInstance.setLatLng([coords.lat, coords.lng]);
+              updatePickerCoordDisplay(coords.lat, coords.lng);
+            }
+            showToast('ตรวจพบพิกัด Google Maps เรียบร้อย: ' + coords.lat.toFixed(6) + ', ' + coords.lng.toFixed(6), 'success');
+          } else {
+            showToast('ไม่สามารถระบุพิกัดจากข้อความที่วางได้ ลองวางเลขพิกัด เช่น 14.9799, 102.0978', 'error');
+          }
+        });
+
+        inputGoogleMapsPaste.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            btnParseGoogleMaps.click();
+          }
+        });
+      }
+
+      if (btnOpenExtGoogleMaps) {
+        btnOpenExtGoogleMaps.addEventListener('click', function() {
+          var curLat = currentPickerCoords.lat;
+          var curLng = currentPickerCoords.lng;
+          window.open('https://www.google.com/maps/@' + curLat + ',' + curLng + ',17z', '_blank');
+        });
+      }
+
+      // Map Layer Toggle buttons
+      var layerButtons = document.querySelectorAll('.btn-map-layer');
+      for (var lb = 0; lb < layerButtons.length; lb++) {
+        layerButtons[lb].addEventListener('click', function(e) {
+          var target = e.currentTarget;
+          var layer = target.getAttribute('data-layer');
+          switchPickerMapLayer(layer);
         });
       }
 
