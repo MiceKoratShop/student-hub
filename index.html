@@ -1634,16 +1634,70 @@ textarea.form-control { min-height: 70px; resize: vertical; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: var(--input-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  transition: var(--transition);
+  transition: var(--transition-fast);
+  user-select: none;
 }
 
 .classroom-item-row:hover {
   border-color: var(--glass-border-orange);
   background: var(--glass-card-hover);
+}
+
+.classroom-item-row.dragging {
+  opacity: 0.45;
+  border-color: var(--orange-500);
+  background: rgba(255, 107, 0, 0.15);
+}
+
+.classroom-order-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 107, 0, 0.15);
+  color: var(--orange-400);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.classroom-reorder-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: var(--transition-fast);
+}
+
+.classroom-reorder-btn:hover:not(:disabled) {
+  background: rgba(255, 107, 0, 0.2);
+  color: var(--orange-400);
+  border-color: var(--orange-500);
+}
+
+.classroom-reorder-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.btn-global-edit.active {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #fff !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }
 
 /* Luxury Delete Confirmation Popup Styles */
@@ -2089,6 +2143,12 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         <button id="btn-admin-logout" class="btn btn-secondary" style="display: none; padding: 7px 12px; font-size: 0.8rem;">
           <i class="fa-solid fa-right-from-bracket"></i>
           <span>ออกจากระบบ</span>
+        </button>
+
+        <!-- Global Edit Toggle Button for Admin (Next to Theme Toggle) -->
+        <button id="btn-toggle-global-edit" class="btn btn-secondary btn-global-edit" style="display: none; padding: 7px 12px; font-size: 0.8rem;" title="เปิด/ปิดสิทธิ์การแก้ไขข้อมูลสำหรับนักศึกษาทุกคน (Admin)">
+          <i class="fa-solid fa-lock" id="icon-global-edit"></i>
+          <span id="text-global-edit">ปิดแก้ไขทุกคน</span>
         </button>
 
         <button id="btn-theme-toggle" class="btn btn-icon-only" title="สลับโหมดมืด/สว่าง">
@@ -2940,6 +3000,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       isAdmin: sessionStorage.getItem('cs_is_admin') === 'true',
       adminPassword: sessionStorage.getItem('cs_admin_pw') || '',
       gasApiUrl: localStorage.getItem('cs_gas_api_url') || DEFAULT_GAS_API_URL,
+      globalAllowEdit: localStorage.getItem('cs_global_allow_edit') === 'true',
       editingId: null,
       deletingId: null,
       deletingClassroomId: null,
@@ -3151,6 +3212,61 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         }
       },
 
+      reorderClassrooms: function(classrooms, adminPassword, onSuccess, onError) {
+        if (isGasEnvironment) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .reorderClassrooms(classrooms, adminPassword);
+        } else {
+          apiClient.postWithRetry({
+            action: 'reorderClassrooms',
+            classrooms: classrooms,
+            adminPassword: adminPassword
+          }, 3, 1000)
+            .then(onSuccess)
+            .catch(function(err) {
+              if (onError) onError(err);
+            });
+        }
+      },
+
+      toggleGlobalEdit: function(globalAllowEdit, adminPassword, onSuccess, onError) {
+        if (isGasEnvironment) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .toggleGlobalEdit(globalAllowEdit, adminPassword);
+        } else {
+          apiClient.postWithRetry({
+            action: 'toggleGlobalEdit',
+            globalAllowEdit: globalAllowEdit,
+            adminPassword: adminPassword
+          }, 2, 800)
+            .then(onSuccess)
+            .catch(function(err) {
+              if (onError) onError(err);
+            });
+        }
+      },
+
+      getGlobalAllowEdit: function(onSuccess, onError) {
+        if (isGasEnvironment) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .getGlobalAllowEdit();
+        } else {
+          var baseUrl = apiClient.getApiUrl();
+          var url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'action=getGlobalAllowEdit&t=' + new Date().getTime();
+          apiClient.fetchWithRetry(url, { method: 'GET', cache: 'no-store' }, 2, 800)
+            .then(onSuccess)
+            .catch(function(err) {
+              if (onError) onError(err);
+            });
+        }
+      },
+
       testConnection: function(apiUrl, onSuccess, onError) {
         var url = apiUrl + (apiUrl.indexOf('?') === -1 ? '?' : '&') + 'action=ping&t=' + new Date().getTime();
         apiClient.fetchWithRetry(url, { method: 'GET', cache: 'no-store' }, 2, 800)
@@ -3208,6 +3324,9 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     var btnAdminLogin = document.getElementById('btn-admin-login');
     var btnManageClassrooms = document.getElementById('btn-manage-classrooms');
     var btnAdminLogout = document.getElementById('btn-admin-logout');
+    var btnToggleGlobalEdit = document.getElementById('btn-toggle-global-edit');
+    var iconGlobalEdit = document.getElementById('icon-global-edit');
+    var textGlobalEdit = document.getElementById('text-global-edit');
     var navAdminLabel = document.getElementById('nav-admin-label');
     
     var adminLoginModal = document.getElementById('admin-login-modal');
@@ -3981,6 +4100,57 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       }
     }
 
+    function updateGlobalEditUI() {
+      if (!btnToggleGlobalEdit) return;
+      if (state.isAdmin) {
+        btnToggleGlobalEdit.style.display = 'inline-flex';
+        if (state.globalAllowEdit) {
+          btnToggleGlobalEdit.className = 'btn btn-global-edit active';
+          if (iconGlobalEdit) iconGlobalEdit.className = 'fa-solid fa-lock-open';
+          if (textGlobalEdit) textGlobalEdit.textContent = 'เปิดแก้ไขทุกคน';
+          btnToggleGlobalEdit.title = 'สถานะ: เปิดให้นักศึกษาทุกคนแก้ไขข้อมูลของตนเองได้ (คลิกเพื่อปิด)';
+        } else {
+          btnToggleGlobalEdit.className = 'btn btn-secondary btn-global-edit';
+          if (iconGlobalEdit) iconGlobalEdit.className = 'fa-solid fa-lock';
+          if (textGlobalEdit) textGlobalEdit.textContent = 'ปิดแก้ไขทุกคน';
+          btnToggleGlobalEdit.title = 'สถานะ: ปิดการแก้ไขทุกคน (แก้ไขได้เฉพาะรายบุคคลที่ได้รับอนุญาต) คลิกเพื่อเปิด';
+        }
+      } else {
+        btnToggleGlobalEdit.style.display = 'none';
+      }
+    }
+
+    function handleToggleGlobalEdit() {
+      if (!state.isAdmin) return;
+      var newStatus = !state.globalAllowEdit;
+      state.globalAllowEdit = newStatus;
+      try {
+        localStorage.setItem('cs_global_allow_edit', String(newStatus));
+      } catch (e) {}
+
+      updateGlobalEditUI();
+      renderStudents();
+
+      if (newStatus) {
+        showToast('เปิดสิทธิ์ให้นักศึกษาทุกคนสามารถแก้ไขข้อมูลของตนเองได้แล้ว', 'success');
+      } else {
+        showToast('ปิดสิทธิ์การแก้ไขทุกคนแล้ว (กลับสู่โหมดแก้ไขเฉพาะบุคคล)', 'info');
+      }
+
+      apiClient.toggleGlobalEdit(
+        newStatus,
+        state.adminPassword || 'admin888',
+        function(res) {
+          if (!res || !res.success) {
+            console.warn('toggleGlobalEdit unsuccessful:', res);
+          }
+        },
+        function(err) {
+          console.warn('Background toggleGlobalEdit error:', err);
+        }
+      );
+    }
+
     function updateAuthUI() {
       if (state.isAdmin) {
         userRoleBadge.className = 'role-badge admin';
@@ -3997,6 +4167,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         btnAdminLogout.style.display = 'none';
         if (navAdminLabel) navAdminLabel.textContent = 'Admin';
       }
+      updateGlobalEditUI();
       updateApiStatusUI();
       updateStats();
       renderStudents();
@@ -4009,6 +4180,10 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     }
 
     function setupEventListeners() {
+      if (btnToggleGlobalEdit) {
+        btnToggleGlobalEdit.addEventListener('click', handleToggleGlobalEdit);
+      }
+
       if (btnThemeToggle) {
         btnThemeToggle.addEventListener('click', function() {
           applyTheme(state.theme === 'dark' ? 'light' : 'dark');
@@ -4353,7 +4528,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
             detailModal.classList.remove('active');
             if (state.isAdmin) {
               openEditModal(s);
-            } else if (s.allowEdit) {
+            } else if (state.globalAllowEdit || s.allowEdit) {
               promptStudentSelfEdit(s);
             } else {
               showToast('สิทธิ์การแก้ไขข้อมูลปิดอยู่ กรุณาติดต่อ Admin', 'error');
@@ -4446,6 +4621,11 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     // Load Cached Data (Instant 0.01s display on page load)
     function loadCachedData() {
       try {
+        var cachedGlobalEdit = localStorage.getItem('cs_global_allow_edit');
+        if (cachedGlobalEdit !== null) {
+          state.globalAllowEdit = (cachedGlobalEdit === 'true');
+          updateGlobalEditUI();
+        }
         var cachedRooms = localStorage.getItem('cs_cached_classrooms');
         var cachedStuds = localStorage.getItem('cs_cached_students');
         var hasCache = false;
@@ -4538,6 +4718,23 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           studsDone = true;
           console.warn('Students fetch error:', err);
           checkAllDone();
+        }
+      );
+
+      // Fetch 3: Global Edit Permission status from Backend
+      apiClient.getGlobalAllowEdit(
+        function(res) {
+          if (res && res.success && res.globalAllowEdit !== undefined) {
+            state.globalAllowEdit = Boolean(res.globalAllowEdit);
+            try {
+              localStorage.setItem('cs_global_allow_edit', String(state.globalAllowEdit));
+            } catch (e) {}
+            updateGlobalEditUI();
+            renderStudents();
+          }
+        },
+        function(err) {
+          console.warn('getGlobalAllowEdit error:', err);
         }
       );
     }
@@ -4979,7 +5176,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         };
         card.appendChild(lockedBanner);
 
-        if (student.allowEdit) {
+        if (state.globalAllowEdit || student.allowEdit) {
           var selfEditBtn = document.createElement('button');
           selfEditBtn.type = 'button';
           selfEditBtn.className = 'student-self-edit-btn';
@@ -5190,7 +5387,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         btnV.onclick = function() { openDetailModal(student); };
         actWrapUser.appendChild(btnV);
 
-        if (student.allowEdit) {
+        if (state.globalAllowEdit || student.allowEdit) {
           var btnSE = document.createElement('button');
           btnSE.className = 'btn btn-primary';
           btnSE.style.background = 'linear-gradient(135deg, #10b981, #059669)';
@@ -5215,6 +5412,8 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       classroomModal.classList.add('active');
     }
 
+    var dragSrcIndex = null;
+
     function renderClassroomList() {
       if (!classroomListContainer) return;
       classroomListContainer.innerHTML = '';
@@ -5231,26 +5430,156 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       }
 
       for (var i = 0; i < state.classrooms.length; i++) {
-        (function(cr) {
+        (function(cr, idx) {
           var row = document.createElement('div');
           row.className = 'classroom-item-row';
+          row.setAttribute('draggable', 'true');
+          row.setAttribute('data-index', String(idx));
+
+          // Drag and Drop Events
+          row.addEventListener('dragstart', function(e) {
+            dragSrcIndex = idx;
+            row.classList.add('dragging');
+            if (e.dataTransfer) {
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', String(idx));
+            }
+          });
+
+          row.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            row.style.borderColor = 'var(--orange-500)';
+          });
+
+          row.addEventListener('dragleave', function() {
+            row.style.borderColor = '';
+          });
+
+          row.addEventListener('drop', function(e) {
+            e.preventDefault();
+            row.style.borderColor = '';
+            if (dragSrcIndex !== null && dragSrcIndex !== idx) {
+              moveClassroomToIndex(dragSrcIndex, idx);
+            }
+          });
+
+          row.addEventListener('dragend', function() {
+            row.classList.remove('dragging');
+            row.style.borderColor = '';
+            dragSrcIndex = null;
+          });
+
+          // Left Group: Grip handle + Order badge + Room title
+          var leftGroup = document.createElement('div');
+          leftGroup.style.display = 'flex';
+          leftGroup.style.alignItems = 'center';
+          leftGroup.style.gap = '8px';
+
+          var grip = document.createElement('i');
+          grip.className = 'fa-solid fa-grip-vertical';
+          grip.style.cursor = 'grab';
+          grip.style.color = 'var(--text-dim)';
+          grip.style.paddingRight = '2px';
+          grip.title = 'คลิกลากเพื่อสลับลำดับห้องเรียน';
+          leftGroup.appendChild(grip);
+
+          var badge = document.createElement('span');
+          badge.className = 'classroom-order-badge';
+          badge.textContent = '#' + (idx + 1);
+          badge.title = 'ลำดับที่ ' + (idx + 1);
+          leftGroup.appendChild(badge);
 
           var info = document.createElement('div');
           info.innerHTML = '<strong style="color: var(--orange-400);">' + (cr.gradeLevel || '') + '</strong> ' + (cr.roomName || '');
-          row.appendChild(info);
+          leftGroup.appendChild(info);
+
+          row.appendChild(leftGroup);
+
+          // Right Group: Move Up, Move Down, Delete
+          var rightGroup = document.createElement('div');
+          rightGroup.style.display = 'flex';
+          rightGroup.style.alignItems = 'center';
+          rightGroup.style.gap = '4px';
+
+          var upBtn = document.createElement('button');
+          upBtn.type = 'button';
+          upBtn.className = 'classroom-reorder-btn';
+          upBtn.title = 'เลื่อนขึ้นด้านบน';
+          upBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+          if (idx === 0) {
+            upBtn.disabled = true;
+          } else {
+            upBtn.onclick = function(e) {
+              e.stopPropagation();
+              moveClassroom(idx, -1);
+            };
+          }
+          rightGroup.appendChild(upBtn);
+
+          var downBtn = document.createElement('button');
+          downBtn.type = 'button';
+          downBtn.className = 'classroom-reorder-btn';
+          downBtn.title = 'เลื่อนลงด้านล่าง';
+          downBtn.innerHTML = '<i class="fa-solid fa-arrow-down"></i>';
+          if (idx === state.classrooms.length - 1) {
+            downBtn.disabled = true;
+          } else {
+            downBtn.onclick = function(e) {
+              e.stopPropagation();
+              moveClassroom(idx, 1);
+            };
+          }
+          rightGroup.appendChild(downBtn);
 
           var delBtn = document.createElement('button');
+          delBtn.type = 'button';
           delBtn.className = 'card-icon-btn delete-btn';
           delBtn.title = 'ลบห้องเรียน';
           delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-          delBtn.onclick = function() {
+          delBtn.onclick = function(e) {
+            e.stopPropagation();
             openDeleteClassroomModal(cr);
           };
-          row.appendChild(delBtn);
+          rightGroup.appendChild(delBtn);
 
+          row.appendChild(rightGroup);
           classroomListContainer.appendChild(row);
-        })(state.classrooms[i]);
+        })(state.classrooms[i], i);
       }
+    }
+
+    function moveClassroom(index, direction) {
+      var newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= state.classrooms.length) return;
+      moveClassroomToIndex(index, newIndex);
+    }
+
+    function moveClassroomToIndex(fromIndex, toIndex) {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= state.classrooms.length || toIndex >= state.classrooms.length) return;
+      
+      var movedItem = state.classrooms.splice(fromIndex, 1)[0];
+      state.classrooms.splice(toIndex, 0, movedItem);
+
+      try {
+        localStorage.setItem('cs_cached_classrooms', JSON.stringify(state.classrooms));
+      } catch (e) {}
+      updateClassroomDropdowns();
+      renderClassroomList();
+      showToast('จัดลำดับห้องเรียนเรียบร้อยแล้ว (บันทึก Google Sheets ทันที)', 'success');
+
+      apiClient.reorderClassrooms(
+        state.classrooms,
+        state.adminPassword || 'admin888',
+        function(res) {
+          if (!res || !res.success) {
+            console.warn('reorderClassrooms returned unsuccessful:', res);
+          }
+        },
+        function(err) {
+          console.warn('Background reorderClassrooms error:', err);
+        }
+      );
     }
 
     // Delete Classroom Modal
@@ -5358,7 +5687,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     }
 
     function promptStudentSelfEdit(student) {
-      if (!student.allowEdit) {
+      if (!state.globalAllowEdit && !student.allowEdit) {
         showToast('สิทธิ์การแก้ไขข้อมูลยังไม่เปิดใช้งาน กรุณาติดต่อ Admin เพื่อขอเปิดสิทธิ์', 'error');
         return;
       }
@@ -5426,7 +5755,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
 
         if (targetStudent) {
           hasCheckedUrlEdit = true;
-          if (state.isAdmin || targetStudent.allowEdit) {
+          if (state.isAdmin || state.globalAllowEdit || targetStudent.allowEdit) {
             openEditModal(targetStudent);
             showToast('เปิดแบบฟอร์มแก้ไขข้อมูลของ ' + (targetStudent.nickname || targetStudent.fullName), 'info');
           } else {
@@ -6037,7 +6366,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           detailBody.appendChild(noteCard);
         }
 
-        if (student.allowEdit) {
+        if (state.globalAllowEdit || student.allowEdit) {
           var unlockBanner = document.createElement('div');
           unlockBanner.className = 'student-unlocked-banner';
 
@@ -6050,7 +6379,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           ubTitle.style.fontWeight = '700';
           ubTitle.style.fontSize = '0.95rem';
           ubTitle.style.color = '#10b981';
-          ubTitle.textContent = 'คุณได้รับสิทธิ์ให้แก้ไขข้อมูลจาก Admin เรียบร้อยแล้ว';
+          ubTitle.textContent = state.globalAllowEdit ? 'ระบบเปิดสิทธิ์ให้นักศึกษาทุกคนแก้ไขข้อมูลของตนเองได้แล้ว' : 'คุณได้รับสิทธิ์ให้แก้ไขข้อมูลจาก Admin เรียบร้อยแล้ว';
           unlockBanner.appendChild(ubTitle);
 
           var ubText = document.createElement('div');
@@ -6109,7 +6438,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       }
 
       if (btnDetailEdit) {
-        btnDetailEdit.style.display = (state.isAdmin || student.allowEdit) ? 'inline-flex' : 'none';
+        btnDetailEdit.style.display = (state.isAdmin || state.globalAllowEdit || student.allowEdit) ? 'inline-flex' : 'none';
       }
 
       detailModal.classList.add('active');
