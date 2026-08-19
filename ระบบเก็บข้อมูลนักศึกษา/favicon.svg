@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient: Obsidian Dark with Warm Ambient Glow -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e121a"/>
+      <stop offset="100%" stop-color="#07090e"/>
+    </linearGradient>
+
+    <!-- Luxury Orange to Gold Gradient -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff8522"/>
+      <stop offset="50%" stop-color="#ff6b00"/>
+      <stop offset="100%" stop-color="#e05b00"/>
+    </linearGradient>
+
+    <!-- Navigation Red-Orange Gradient -->
+    <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#ff6b00"/>
+    </linearGradient>
+
+    <!-- Gold Accent -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+
+    <!-- Neon Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#ff6b00" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)" stroke="#ff6b00" stroke-width="6" stroke-opacity="0.55"/>
+  <rect x="36" y="36" width="440" height="440" rx="100" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+
+  <!-- Ambient Light Orbs -->
+  <circle cx="140" cy="140" r="100" fill="#ff6b00" opacity="0.18" filter="url(#glow)"/>
+  <circle cx="370" cy="370" r="110" fill="#ef4444" opacity="0.15" filter="url(#glow)"/>
+
+  <!-- Graduation Cap (Diamond Top) -->
+  <g filter="url(#shadow)">
+    <!-- Cap Mortarboard Diamond -->
+    <polygon points="256,105 435,190 256,275 77,190" fill="url(#orangeGrad)" />
+    <!-- Cap Under Highlight -->
+    <polygon points="256,118 415,190 256,262 97,190" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+
+    <!-- Cap Skull Base -->
+    <path d="M150,225 L150,285 C150,335 362,335 362,285 L362,225 Z" fill="#e05b00" opacity="0.95"/>
+    <path d="M150,285 C150,335 362,335 362,285" fill="none" stroke="url(#goldGrad)" stroke-width="5"/>
+
+    <!-- Tassel & Button -->
+    <circle cx="256" cy="190" r="14" fill="url(#goldGrad)" />
+    <path d="M256,190 Q390,210 405,290" fill="none" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round"/>
+    <!-- Tassel Brush -->
+    <polygon points="398,285 412,285 416,330 394,330" fill="url(#goldGrad)"/>
+  </g>
+
+  <!-- Location Map Pin / Student Hub Node Badge at Bottom -->
+  <g filter="url(#shadow)">
+    <!-- Shield / Location Badge Base -->
+    <circle cx="256" cy="385" r="54" fill="url(#navGrad)" stroke="#ffffff" stroke-width="4"/>
+    <!-- Turn / Navigation Arrow Icon inside pin -->
+    <path d="M246,362 L272,362 C278,362 282,366 282,372 L282,398 M282,362 L260,384 M282,362 L260,340" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" transform="translate(512, 0) scale(-1, 1) translate(-256, 0)"/>
+    <circle cx="236" cy="402" r="6" fill="#ffffff"/>
+  </g>
+</svg>

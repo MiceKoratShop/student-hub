@@ -1,0 +1,3 @@
+/api    https://script.google.com/macros/s/AKfycbxr98wFR-Gru89RNpt_sqXyxQWwoA_wOglWHIZfeHy13cp8q6CS57XqMft2WdnVjerR/exec       200!
+/api/*  https://script.google.com/macros/s/AKfycbxr98wFR-Gru89RNpt_sqXyxQWwoA_wOglWHIZfeHy13cp8q6CS57XqMft2WdnVjerR/exec:splat 200!
+/*      /index.html                                                                                                              200

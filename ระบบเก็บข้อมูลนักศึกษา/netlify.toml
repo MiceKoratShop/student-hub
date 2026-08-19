@@ -1,0 +1,29 @@
+# Netlify Configuration for Classroom Student Hub
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/api"
+  to = "https://script.google.com/macros/s/AKfycbxr98wFR-Gru89RNpt_sqXyxQWwoA_wOglWHIZfeHy13cp8q6CS57XqMft2WdnVjerR/exec"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://script.google.com/macros/s/AKfycbxr98wFR-Gru89RNpt_sqXyxQWwoA_wOglWHIZfeHy13cp8q6CS57XqMft2WdnVjerR/exec:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "ALLOWALL"
