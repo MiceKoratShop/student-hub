@@ -1908,6 +1908,71 @@ textarea.form-control { min-height: 70px; resize: vertical; }
   box-shadow: 0 2px 10px rgba(255, 107, 0, 0.4);
 }
 
+/* Student Individual Edit Permission Elements */
+.card-icon-btn.edit-perm-btn {
+  color: var(--text-muted);
+  border-color: var(--glass-border);
+}
+.card-icon-btn.edit-perm-btn.active {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.35);
+}
+
+.student-self-edit-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: var(--transition-fast);
+  width: 100%;
+  margin-top: 4px;
+  text-decoration: none;
+}
+.student-self-edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.5);
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+.admin-edit-perm-box {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.admin-edit-perm-box.locked {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--glass-border);
+}
+
+.student-unlocked-banner {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  text-align: center;
+  align-items: center;
+}
+
 .global-loader {
   position: fixed;
   inset: 0;
@@ -2601,6 +2666,51 @@ textarea.form-control { min-height: 70px; resize: vertical; }
   </div>
 
   <!-- ======================================================================
+       MODAL: STUDENT SELF-EDIT IDENTITY VERIFICATION
+       ====================================================================== -->
+  <div id="verify-edit-modal" class="modal-backdrop">
+    <div class="modal-window" style="max-width: 440px; height: auto;">
+      <div class="sheet-handle"></div>
+      
+      <div class="modal-header">
+        <h2 style="color: #10b981;">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>ยืนยันตัวตนเพื่อแก้ไขข้อมูล</span>
+        </h2>
+        <button type="button" class="modal-close-btn" id="btn-close-verify-modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px; gap: 14px; overflow-y: auto;">
+        <div id="verify-student-info" style="background: var(--input-bg); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--glass-border); text-align: center;">
+          <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main);" id="verify-student-name">-</div>
+          <div style="font-size: 0.8rem; color: var(--text-dim);" id="verify-student-class">-</div>
+        </div>
+
+        <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          เพื่อความปลอดภัย กรุณากรอก <strong>รหัสนักศึกษา</strong> หรือ <strong>เบอร์โทรศัพท์ 4 ตัวท้าย</strong> ของคุณ เพื่อเปิดหน้าแก้ไขข้อมูล
+        </p>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" for="verify-input-pin">
+            <i class="fa-solid fa-key" style="color: #10b981;"></i> รหัสนักศึกษา หรือ เบอร์โทร 4 ตัวท้าย
+          </label>
+          <input type="text" id="verify-input-pin" class="form-control" placeholder="เช่น 6601234 หรือ 5678" style="font-size: 1rem; text-align: center; letter-spacing: 2px;">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-verify">ยกเลิก</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-verify" style="background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981;">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          <span>เข้าสู่หน้าแก้ไขข้อมูล</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
        MODAL 2: ADMIN LOGIN (Password: admin888)
        ====================================================================== -->
   <div id="admin-login-modal" class="modal-backdrop">
@@ -2982,6 +3092,26 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         }
       },
 
+      toggleAllowEdit: function(studentId, allowEdit, adminPassword, onSuccess, onError) {
+        if (isGasEnvironment) {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .toggleAllowEdit(studentId, allowEdit, adminPassword);
+        } else {
+          apiClient.postWithRetry({
+            action: 'toggleAllowEdit',
+            studentId: studentId,
+            allowEdit: allowEdit,
+            adminPassword: adminPassword
+          }, 2, 800)
+            .then(onSuccess)
+            .catch(function(err) {
+              if (onError) onError(err);
+            });
+        }
+      },
+
       addClassroom: function(gradeLevel, roomName, adminPassword, onSuccess, onError) {
         if (isGasEnvironment) {
           google.script.run
@@ -3164,6 +3294,14 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     var btnCloseDetail = document.getElementById('btn-close-detail');
     var btnDetailClose = document.getElementById('btn-detail-close');
     var btnDetailEdit = document.getElementById('btn-detail-edit');
+
+    // Student Identity Verification Modal elements
+    var verifyEditModal = document.getElementById('verify-edit-modal');
+    var btnCloseVerifyModal = document.getElementById('btn-close-verify-modal');
+    var btnCancelVerify = document.getElementById('btn-cancel-verify');
+    var btnConfirmVerify = document.getElementById('btn-confirm-verify');
+    var verifyInputPin = document.getElementById('verify-input-pin');
+    var pendingVerifyStudent = null;
 
     // Delete Student Modal
     var deleteModal = document.getElementById('delete-modal');
@@ -4213,7 +4351,26 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           if (state.viewingStudent) {
             var s = state.viewingStudent;
             detailModal.classList.remove('active');
-            openEditModal(s);
+            if (state.isAdmin) {
+              openEditModal(s);
+            } else if (s.allowEdit) {
+              promptStudentSelfEdit(s);
+            } else {
+              showToast('สิทธิ์การแก้ไขข้อมูลปิดอยู่ กรุณาติดต่อ Admin', 'error');
+            }
+          }
+        });
+      }
+
+      // Student self-edit identity verification events
+      if (btnCloseVerifyModal) btnCloseVerifyModal.addEventListener('click', function() { if (verifyEditModal) verifyEditModal.classList.remove('active'); });
+      if (btnCancelVerify) btnCancelVerify.addEventListener('click', function() { if (verifyEditModal) verifyEditModal.classList.remove('active'); });
+      if (btnConfirmVerify) btnConfirmVerify.addEventListener('click', checkAndProceedStudentSelfEdit);
+      if (verifyInputPin) {
+        verifyInputPin.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            checkAndProceedStudentSelfEdit();
           }
         });
       }
@@ -4301,6 +4458,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           state.students = JSON.parse(cachedStuds) || [];
           updateStats();
           renderStudents();
+          checkUrlEditParam();
           hasCache = true;
         }
         if (hasCache) {
@@ -4372,6 +4530,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
             } catch (e) {}
             updateStats();
             renderStudents();
+            checkUrlEditParam();
           }
           checkAllDone();
         },
@@ -4788,6 +4947,15 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         };
         menuWrap.appendChild(editBtn);
 
+        var toggleEditBtn = document.createElement('button');
+        toggleEditBtn.className = 'card-icon-btn edit-perm-btn' + (student.allowEdit ? ' active' : '');
+        toggleEditBtn.title = student.allowEdit ? 'สิทธิ์แก้ไข: เปิดอยู่ (คลิกเพื่อปิด หรือคัดลอกลิงก์ให้นักศึกษา)' : 'สิทธิ์แก้ไข: ปิดอยู่ (คลิกเพื่อเปิดให้นักศึกษาคนนี้แก้ไขข้อมูลของตัวเอง)';
+        toggleEditBtn.innerHTML = student.allowEdit ? '<i class="fa-solid fa-lock-open" style="color: #10b981;"></i>' : '<i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>';
+        toggleEditBtn.onclick = function(e) {
+          handleToggleAllowEdit(student, e);
+        };
+        menuWrap.appendChild(toggleEditBtn);
+
         var delBtn = document.createElement('button');
         delBtn.className = 'card-icon-btn delete-btn';
         delBtn.title = 'ลบข้อมูล (Admin)';
@@ -4810,6 +4978,18 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           promptAdminLogin();
         };
         card.appendChild(lockedBanner);
+
+        if (student.allowEdit) {
+          var selfEditBtn = document.createElement('button');
+          selfEditBtn.type = 'button';
+          selfEditBtn.className = 'student-self-edit-btn';
+          selfEditBtn.innerHTML = '<i class="fa-solid fa-user-pen"></i> <span>แก้ไขข้อมูลของคุณ (ได้รับอนุญาต)</span>';
+          selfEditBtn.onclick = function(e) {
+            e.stopPropagation();
+            promptStudentSelfEdit(student);
+          };
+          card.appendChild(selfEditBtn);
+        }
       }
 
       return card;
@@ -4976,25 +5156,53 @@ textarea.form-control { min-height: 70px; resize: vertical; }
 
         var btnEd = document.createElement('button');
         btnEd.className = 'card-icon-btn';
+        btnEd.title = 'แก้ไขข้อมูล (Admin)';
         btnEd.innerHTML = '<i class="fa-solid fa-pen"></i>';
         btnEd.onclick = function() { openEditModal(student); };
         actWrap.appendChild(btnEd);
 
+        var btnTogglePerm = document.createElement('button');
+        btnTogglePerm.className = 'card-icon-btn edit-perm-btn' + (student.allowEdit ? ' active' : '');
+        btnTogglePerm.title = student.allowEdit ? 'สิทธิ์แก้ไข: เปิดอยู่ (คลิกเพื่อปิด หรือคัดลอกลิงก์)' : 'สิทธิ์แก้ไข: ปิดอยู่ (คลิกเพื่อเปิดให้นักศึกษาแก้ไข)';
+        btnTogglePerm.innerHTML = student.allowEdit ? '<i class="fa-solid fa-lock-open" style="color: #10b981;"></i>' : '<i class="fa-solid fa-lock" style="color: var(--text-muted);"></i>';
+        btnTogglePerm.onclick = function(e) { handleToggleAllowEdit(student, e); };
+        actWrap.appendChild(btnTogglePerm);
+
         var btnDe = document.createElement('button');
         btnDe.className = 'card-icon-btn delete-btn';
+        btnDe.title = 'ลบข้อมูล (Admin)';
         btnDe.innerHTML = '<i class="fa-solid fa-trash"></i>';
         btnDe.onclick = function() { openDeleteModal(student); };
         actWrap.appendChild(btnDe);
 
         tdActions.appendChild(actWrap);
       } else {
+        var actWrapUser = document.createElement('div');
+        actWrapUser.style.display = 'flex';
+        actWrapUser.style.justifyContent = 'flex-end';
+        actWrapUser.style.gap = '4px';
+
         var btnV = document.createElement('button');
         btnV.className = 'btn btn-secondary';
         btnV.style.padding = '4px 8px';
         btnV.style.fontSize = '0.75rem';
         btnV.textContent = 'ดูโปรไฟล์';
         btnV.onclick = function() { openDetailModal(student); };
-        tdActions.appendChild(btnV);
+        actWrapUser.appendChild(btnV);
+
+        if (student.allowEdit) {
+          var btnSE = document.createElement('button');
+          btnSE.className = 'btn btn-primary';
+          btnSE.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          btnSE.style.borderColor = '#10b981';
+          btnSE.style.padding = '4px 8px';
+          btnSE.style.fontSize = '0.75rem';
+          btnSE.innerHTML = '<i class="fa-solid fa-user-pen"></i> แก้ไข';
+          btnSE.onclick = function() { promptStudentSelfEdit(student); };
+          actWrapUser.appendChild(btnSE);
+        }
+
+        tdActions.appendChild(actWrapUser);
       }
       tr.appendChild(tdActions);
 
@@ -5088,6 +5296,146 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           console.warn('Background delete classroom error:', err);
         }
       );
+    }
+
+    // ========================================================================
+    // STUDENT INDIVIDUAL EDIT PERMISSION & SELF-EDIT CONTROLLER
+    // ========================================================================
+    var hasCheckedUrlEdit = false;
+
+    function copyStudentEditLink(student) {
+      var baseUrl = window.location.origin + window.location.pathname;
+      var editLink = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'editId=' + encodeURIComponent(student.id);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(editLink).then(function() {
+          showToast('คัดลอกลิงก์แก้ไขสำหรับ ' + (student.nickname || student.fullName) + ' แล้ว! ส่งให้นักศึกษาได้ทันที', 'success');
+        }).catch(function() {
+          prompt('คัดลอกลิงก์แก้ไขสำหรับนักศึกษาคนนี้:', editLink);
+        });
+      } else {
+        prompt('คัดลอกลิงก์แก้ไขสำหรับนักศึกษาคนนี้:', editLink);
+      }
+    }
+
+    function handleToggleAllowEdit(student, e) {
+      if (e) e.stopPropagation();
+      if (!state.isAdmin) return;
+
+      var newStatus = !student.allowEdit;
+      student.allowEdit = newStatus;
+
+      // Instant optimistic UI update
+      try {
+        localStorage.setItem('cs_cached_students', JSON.stringify(state.students));
+      } catch (err) {}
+      renderStudents();
+      if (state.viewingStudent && state.viewingStudent.id === student.id) {
+        openDetailModal(student);
+      }
+
+      if (newStatus) {
+        showToast('เปิดสิทธิ์ให้นักศึกษา ' + (student.nickname || student.fullName) + ' แก้ไขข้อมูลเรียบร้อย', 'success');
+        copyStudentEditLink(student);
+      } else {
+        showToast('ปิดสิทธิ์การแก้ไขข้อมูลของ ' + (student.nickname || student.fullName) + ' แล้ว', 'info');
+      }
+
+      // Background sync with GAS
+      apiClient.toggleAllowEdit(
+        student.id,
+        newStatus,
+        state.adminPassword || 'admin888',
+        function(res) {
+          if (!res || !res.success) {
+            console.warn('toggleAllowEdit returned unsuccessful:', res);
+          }
+        },
+        function(err) {
+          console.warn('toggleAllowEdit error:', err);
+        }
+      );
+    }
+
+    function promptStudentSelfEdit(student) {
+      if (!student.allowEdit) {
+        showToast('สิทธิ์การแก้ไขข้อมูลยังไม่เปิดใช้งาน กรุณาติดต่อ Admin เพื่อขอเปิดสิทธิ์', 'error');
+        return;
+      }
+
+      pendingVerifyStudent = student;
+      var nameEl = document.getElementById('verify-student-name');
+      var classEl = document.getElementById('verify-student-class');
+      var pinInput = document.getElementById('verify-input-pin');
+
+      if (nameEl) nameEl.textContent = (student.fullName || '') + (student.nickname ? (' (' + student.nickname + ')') : '');
+      if (classEl) classEl.textContent = '🎓 ' + (student.gradeLevel || '') + ' ' + (student.classroom || '');
+      if (pinInput) pinInput.value = '';
+
+      if (verifyEditModal) verifyEditModal.classList.add('active');
+      if (pinInput) setTimeout(function() { pinInput.focus(); }, 200);
+    }
+
+    function checkAndProceedStudentSelfEdit() {
+      if (!pendingVerifyStudent) return;
+      var pinInput = document.getElementById('verify-input-pin');
+      var entered = (pinInput ? pinInput.value : '').trim().replace(/[^a-zA-Z0-9]/g, '');
+      var student = pendingVerifyStudent;
+
+      if (!entered) {
+        showToast('กรุณากรอกรหัสนักศึกษา หรือเบอร์โทรศัพท์ 4 ตัวท้าย', 'info');
+        return;
+      }
+
+      var cleanCode = String(student.studentCode || '').trim().replace(/[^a-zA-Z0-9]/g, '');
+      var cleanPhone = String(student.phone || '').trim().replace(/[^0-9]/g, '');
+      var phoneLast4 = cleanPhone.length >= 4 ? cleanPhone.slice(-4) : '';
+
+      var isMatched = false;
+      if (cleanCode && entered.toLowerCase() === cleanCode.toLowerCase()) {
+        isMatched = true;
+      } else if (phoneLast4 && entered === phoneLast4) {
+        isMatched = true;
+      } else if (cleanPhone && (entered === cleanPhone || entered === cleanPhone.slice(-6))) {
+        isMatched = true;
+      }
+
+      if (isMatched) {
+        if (verifyEditModal) verifyEditModal.classList.remove('active');
+        openEditModal(student);
+        showToast('ยืนยันตัวตนสำเร็จ กำลังเปิดหน้าแก้ไขข้อมูล...', 'success');
+      } else {
+        showToast('ข้อมูลยืนยันตัวตนไม่ถูกต้อง กรุณาตรวจสอบรหัสนักศึกษาหรือเบอร์โทร', 'error');
+      }
+    }
+
+    function checkUrlEditParam() {
+      if (hasCheckedUrlEdit) return;
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var editId = params.get('editId') || params.get('edit');
+        if (!editId) return;
+
+        var targetStudent = null;
+        for (var i = 0; i < state.students.length; i++) {
+          if (state.students[i].id === editId || state.students[i].studentCode === editId) {
+            targetStudent = state.students[i];
+            break;
+          }
+        }
+
+        if (targetStudent) {
+          hasCheckedUrlEdit = true;
+          if (state.isAdmin || targetStudent.allowEdit) {
+            openEditModal(targetStudent);
+            showToast('เปิดแบบฟอร์มแก้ไขข้อมูลของ ' + (targetStudent.nickname || targetStudent.fullName), 'info');
+          } else {
+            showToast('สิทธิ์การแก้ไขข้อมูลของ ' + (targetStudent.nickname || targetStudent.fullName) + ' ปิดอยู่ กรุณาติดต่อ Admin', 'error');
+          }
+        }
+      } catch (e) {
+        console.warn('checkUrlEditParam error:', e);
+      }
     }
 
     function handleAddClassroom(e) {
@@ -5602,6 +5950,80 @@ textarea.form-control { min-height: 70px; resize: vertical; }
 
           detailBody.appendChild(mapWrap);
         }
+
+        var permBox = document.createElement('div');
+        permBox.className = 'admin-edit-perm-box' + (student.allowEdit ? '' : ' locked');
+
+        var permHeader = document.createElement('div');
+        permHeader.style.display = 'flex';
+        permHeader.style.alignItems = 'center';
+        permHeader.style.justifyContent = 'space-between';
+        permHeader.style.flexWrap = 'wrap';
+        permHeader.style.gap = '6px';
+
+        var permTitle = document.createElement('div');
+        permTitle.style.fontSize = '0.86rem';
+        permTitle.style.fontWeight = '700';
+        permTitle.style.display = 'flex';
+        permTitle.style.alignItems = 'center';
+        permTitle.style.gap = '6px';
+        if (student.allowEdit) {
+          permTitle.style.color = '#10b981';
+          permTitle.innerHTML = '<i class="fa-solid fa-lock-open"></i> <span>สิทธิ์แก้ไข: เปิดให้นักศึกษาแก้ไขได้</span>';
+        } else {
+          permTitle.style.color = 'var(--text-muted)';
+          permTitle.innerHTML = '<i class="fa-solid fa-lock"></i> <span>สิทธิ์แก้ไข: ปิดอยู่ (เฉพาะ Admin)</span>';
+        }
+        permHeader.appendChild(permTitle);
+
+        var permBtnWrap = document.createElement('div');
+        permBtnWrap.style.display = 'flex';
+        permBtnWrap.style.gap = '6px';
+
+        var toggleBtnModal = document.createElement('button');
+        toggleBtnModal.type = 'button';
+        toggleBtnModal.className = 'btn ' + (student.allowEdit ? 'btn-secondary' : 'btn-primary');
+        toggleBtnModal.style.fontSize = '0.78rem';
+        toggleBtnModal.style.padding = '5px 12px';
+        if (student.allowEdit) {
+          toggleBtnModal.innerHTML = '<i class="fa-solid fa-lock"></i> <span>ปิดการแก้ไข</span>';
+        } else {
+          toggleBtnModal.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          toggleBtnModal.style.borderColor = '#10b981';
+          toggleBtnModal.innerHTML = '<i class="fa-solid fa-lock-open"></i> <span>เปิดให้นักศึกษาแก้ไข</span>';
+        }
+        toggleBtnModal.onclick = function(e) {
+          handleToggleAllowEdit(student, e);
+        };
+        permBtnWrap.appendChild(toggleBtnModal);
+
+        if (student.allowEdit) {
+          var copyLinkBtn = document.createElement('button');
+          copyLinkBtn.type = 'button';
+          copyLinkBtn.className = 'btn btn-secondary';
+          copyLinkBtn.style.fontSize = '0.78rem';
+          copyLinkBtn.style.padding = '5px 10px';
+          copyLinkBtn.innerHTML = '<i class="fa-solid fa-link"></i> <span>คัดลอกลิงก์</span>';
+          copyLinkBtn.onclick = function() {
+            copyStudentEditLink(student);
+          };
+          permBtnWrap.appendChild(copyLinkBtn);
+        }
+
+        permHeader.appendChild(permBtnWrap);
+        permBox.appendChild(permHeader);
+
+        var permDesc = document.createElement('div');
+        permDesc.style.fontSize = '0.74rem';
+        permDesc.style.color = 'var(--text-muted)';
+        if (student.allowEdit) {
+          permDesc.textContent = 'นักศึกษาคนนี้สามารถเข้ามากรอกรหัสนักศึกษา/เบอร์โทร หรือคลิกลิงก์เพื่อแก้ไขข้อมูลของตัวเองได้';
+        } else {
+          permDesc.textContent = 'กดปุ่ม "เปิดให้นักศึกษาแก้ไข" เพื่ออนุญาตให้นักศึกษาคนนี้แก้ไขข้อมูลของตนเองได้';
+        }
+        permBox.appendChild(permDesc);
+        detailBody.appendChild(permBox);
+
       } else {
         if (student.note) {
           var noteCard = document.createElement('div');
@@ -5613,6 +6035,46 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           noteCard.style.color = 'var(--text-main)';
           noteCard.innerHTML = '<strong style="color: var(--orange-400);"><i class="fa-solid fa-clipboard-list"></i> ข้อมูลเพิ่มเติม:</strong> ' + student.note;
           detailBody.appendChild(noteCard);
+        }
+
+        if (student.allowEdit) {
+          var unlockBanner = document.createElement('div');
+          unlockBanner.className = 'student-unlocked-banner';
+
+          var ubIcon = document.createElement('div');
+          ubIcon.style.fontSize = '28px';
+          ubIcon.innerHTML = '<i class="fa-solid fa-circle-check" style="color: #10b981;"></i>';
+          unlockBanner.appendChild(ubIcon);
+
+          var ubTitle = document.createElement('div');
+          ubTitle.style.fontWeight = '700';
+          ubTitle.style.fontSize = '0.95rem';
+          ubTitle.style.color = '#10b981';
+          ubTitle.textContent = 'คุณได้รับสิทธิ์ให้แก้ไขข้อมูลจาก Admin เรียบร้อยแล้ว';
+          unlockBanner.appendChild(ubTitle);
+
+          var ubText = document.createElement('div');
+          ubText.style.fontSize = '0.8rem';
+          ubText.style.color = 'var(--text-secondary)';
+          ubText.textContent = 'หากคุณคือ ' + (student.fullName || 'นักศึกษาคนนี้') + ' สามารถคลิกปุ่มด้านล่างเพื่อเข้าสู่หน้าแก้ไขข้อมูลของคุณได้ทันที';
+          unlockBanner.appendChild(ubText);
+
+          var ubBtn = document.createElement('button');
+          ubBtn.type = 'button';
+          ubBtn.className = 'btn btn-primary';
+          ubBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          ubBtn.style.borderColor = '#10b981';
+          ubBtn.style.padding = '8px 18px';
+          ubBtn.style.fontSize = '0.86rem';
+          ubBtn.style.marginTop = '4px';
+          ubBtn.innerHTML = '<i class="fa-solid fa-user-pen"></i> <span>เข้าสู่หน้าแก้ไขข้อมูลของฉัน</span>';
+          ubBtn.onclick = function() {
+            detailModal.classList.remove('active');
+            promptStudentSelfEdit(student);
+          };
+          unlockBanner.appendChild(ubBtn);
+
+          detailBody.appendChild(unlockBanner);
         }
 
         var privacyBox = document.createElement('div');
@@ -5647,7 +6109,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       }
 
       if (btnDetailEdit) {
-        btnDetailEdit.style.display = state.isAdmin ? 'inline-flex' : 'none';
+        btnDetailEdit.style.display = (state.isAdmin || student.allowEdit) ? 'inline-flex' : 'none';
       }
 
       detailModal.classList.add('active');
