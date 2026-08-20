@@ -5941,14 +5941,17 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       var ageVal = formAge ? formAge.value : (birthVal ? calculateAge(birthVal) : '');
       var housingVal = formHousingType ? formHousingType.value : 'พักที่บ้าน';
 
-      var studentId = document.getElementById('form-student-id').value;
+      var studentId = (state.editingId || document.getElementById('form-student-id').value || '').trim();
+      var isNewStudent = !studentId;
+      var tempId = studentId || ('STU-' + (new Date().getTime().toString().slice(-6)));
       var photoToSave = formPhotoBase64.value || formPhotoUrl.value.trim();
 
       var formattedPhone = formatPhoneForDisplay(rawPhone);
       var formattedParentPhone = formatPhoneForDisplay(rawParentPhone);
 
       var payload = {
-        id: studentId || '',
+        id: studentId,
+        isNew: isNewStudent,
         studentCode: document.getElementById('form-student-code').value.trim(),
         fullName: fullName,
         nickname: nickname,
@@ -5970,17 +5973,14 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         note: document.getElementById('form-note').value.trim()
       };
 
-      var isNewStudent = !payload.id;
-      var tempId = payload.id || ('STU-' + (new Date().getTime().toString().slice(-6)));
-      payload.id = tempId;
-
       // Instant optimistic UI update
+      var localPayload = Object.assign({}, payload, { id: tempId });
       if (isNewStudent) {
-        state.students.unshift(payload);
+        state.students.unshift(localPayload);
       } else {
         for (var si = 0; si < state.students.length; si++) {
-          if (state.students[si].id === payload.id) {
-            state.students[si] = payload;
+          if (state.students[si].id === tempId) {
+            state.students[si] = localPayload;
             break;
           }
         }
@@ -6013,10 +6013,13 @@ textarea.form-control { min-height: 70px; resize: vertical; }
               localStorage.setItem('cs_cached_students', JSON.stringify(state.students));
             } catch (e) {}
             renderStudents();
+          } else {
+            showToast('บันทึกลง Google Sheets ไม่สำเร็จ: ' + (res && res.message ? res.message : 'กรุณาตรวจสอบการเชื่อมต่อ'), 'error');
           }
         },
         function(err) {
           console.warn('Background sync save warning:', err);
+          showToast('การเชื่อมต่อกับ Google Apps Script ขัดข้อง: ข้อมูลอาจยังไม่ถูกบันทึกใน Sheet', 'error');
         }
       );
     }
