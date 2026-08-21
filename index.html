@@ -2262,7 +2262,7 @@ textarea.form-control { min-height: 70px; resize: vertical; }
           <button id="btn-view-table" class="view-btn" title="มุมมองตาราง">
             <i class="fa-solid fa-list"></i> <span>ตาราง</span>
           </button>
-          <button id="btn-view-map" class="view-btn" title="โหมดแผนที่นำทางรวม">
+          <button id="btn-view-map" class="view-btn" title="โหมดแผนที่นำทางรวม (เฉพาะ Admin)" style="display: none;">
             <i class="fa-solid fa-map-location-dot" style="color: #ef4444;"></i> <span>แผนที่</span>
           </button>
         </div>
@@ -2338,8 +2338,8 @@ textarea.form-control { min-height: 70px; resize: vertical; }
       </button>
     </div>
 
-    <!-- Mobile Map View Button -->
-    <button class="nav-item" id="nav-map-mode">
+    <!-- Mobile Map View Button (Admin Only) -->
+    <button class="nav-item" id="nav-map-mode" style="display: none;">
       <i class="fa-solid fa-map-location-dot" style="font-size: 20px; color: #ef4444;"></i>
       <span>แผนที่</span>
     </button>
@@ -3873,9 +3873,10 @@ textarea.form-control { min-height: 70px; resize: vertical; }
     }
 
     // ========================================================================
-    // CLASSROOM MAP OVERVIEW (โหมดแผนที่รวมห้องเรียน)
+    // CLASSROOM MAP OVERVIEW (โหมดแผนที่รวมห้องเรียน - เฉพาะ Admin)
     // ========================================================================
     function renderClassroomMap() {
+      if (!state.isAdmin) return;
       var mapEl = document.getElementById('classroom-leaflet-map');
       if (!mapEl || typeof L === 'undefined') return;
 
@@ -4022,16 +4023,22 @@ textarea.form-control { min-height: 70px; resize: vertical; }
 
     // Switch Views
     function switchView(viewName) {
+      if (viewName === 'map' && !state.isAdmin) {
+        promptAdminLogin();
+        showToast('โหมดแผนที่ตำแหน่งที่ตั้งนักศึกษา สงวนสิทธิ์เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น', 'info');
+        return;
+      }
+
       state.view = viewName;
-      btnViewGrid.classList.toggle('active', viewName === 'grid');
-      btnViewTable.classList.toggle('active', viewName === 'table');
-      btnViewMap.classList.toggle('active', viewName === 'map');
+      if (btnViewGrid) btnViewGrid.classList.toggle('active', viewName === 'grid');
+      if (btnViewTable) btnViewTable.classList.toggle('active', viewName === 'table');
+      if (btnViewMap) btnViewMap.classList.toggle('active', viewName === 'map');
 
-      gridContainer.style.display = viewName === 'grid' ? 'grid' : 'none';
-      tableContainer.classList.toggle('active', viewName === 'table');
-      studentMapContainer.classList.toggle('active', viewName === 'map');
+      if (gridContainer) gridContainer.style.display = viewName === 'grid' ? 'grid' : 'none';
+      if (tableContainer) tableContainer.classList.toggle('active', viewName === 'table');
+      if (studentMapContainer) studentMapContainer.classList.toggle('active', viewName === 'map');
 
-      if (viewName === 'map') {
+      if (viewName === 'map' && state.isAdmin) {
         renderClassroomMap();
       }
     }
@@ -4158,6 +4165,8 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         btnAdminLogin.style.display = 'none';
         btnManageClassrooms.style.display = 'inline-flex';
         btnAdminLogout.style.display = 'inline-flex';
+        if (btnViewMap) btnViewMap.style.display = 'inline-flex';
+        if (navMapMode) navMapMode.style.display = 'flex';
         if (navAdminLabel) navAdminLabel.textContent = 'Logout';
       } else {
         userRoleBadge.className = 'role-badge user';
@@ -4165,7 +4174,13 @@ textarea.form-control { min-height: 70px; resize: vertical; }
         btnAdminLogin.style.display = 'inline-flex';
         btnManageClassrooms.style.display = 'none';
         btnAdminLogout.style.display = 'none';
+        if (btnViewMap) btnViewMap.style.display = 'none';
+        if (navMapMode) navMapMode.style.display = 'none';
         if (navAdminLabel) navAdminLabel.textContent = 'Admin';
+
+        if (state.view === 'map') {
+          switchView('grid');
+        }
       }
       updateGlobalEditUI();
       updateApiStatusUI();
